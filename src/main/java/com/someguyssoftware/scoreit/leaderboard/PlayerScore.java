@@ -19,6 +19,7 @@
  */
 package com.someguyssoftware.scoreit.leaderboard;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,18 +41,29 @@ public class PlayerScore {
 	private static final String NAME_KEY = "name";
 	private static final String POINTS_KEY = "points";
 	private static final String STACK_KEY = "stack";
+	private static final String COUNTS_KEY = "counts";
 	
 	private String uuid;
 	private String name;
 	private int points;
 	private Map<ResourceLocation, ItemStack> itemCounts;
 
+	/**
+	 * 
+	 * @param uuid
+	 */
 	public PlayerScore(String uuid) {
-
+		setUuid(uuid);
 	}
 
+	/**
+	 * 
+	 * @param uuid
+	 * @param name
+	 */
 	public PlayerScore(String uuid, String name) {
-
+		this(uuid);
+		setName(name);
 	}
 
 	/**
@@ -62,8 +74,26 @@ public class PlayerScore {
 		Optional<PlayerScore> optionalScore = Optional.empty();
 		try {
 			String uuid = nbt.getString(UUID_KEY);
-			// TODO finish
+			if (uuid.isEmpty()) {
+				throw new Exception("UUID is required.");
+			}
+			
 			PlayerScore score = new PlayerScore(uuid);
+			
+			if (nbt.contains(NAME_KEY)) {
+				score.setName(nbt.getString(NAME_KEY));
+			}
+			
+			if (nbt.contains(POINTS_KEY)) {
+				score.setPoints(nbt.getInt(POINTS_KEY));
+			}			
+
+			if (nbt.contains(COUNTS_KEY)) {
+				ListNBT list = nbt.getList(COUNTS_KEY, 10);
+				list.forEach(element -> {
+					score.getItemCounts().put(new ResourceLocation(nbt.getString(NAME_KEY)), ItemStack.of((CompoundNBT) nbt.get(STACK_KEY)));
+				});
+			}			
 			optionalScore = Optional.of(score);
 		}
 		catch(Exception e) {
@@ -89,8 +119,8 @@ public class PlayerScore {
 			count.put(STACK_KEY, stackNbt);
 			countList.add(count);
 		});
-		
-		return null;
+		nbt.put(COUNTS_KEY, countList);
+		return nbt;
 	}
 
 	public String getUuid() {
@@ -118,6 +148,9 @@ public class PlayerScore {
 	}
 
 	public Map<ResourceLocation, ItemStack> getItemCounts() {
+		if (itemCounts == null) {
+			itemCounts = new HashMap<>();
+		}
 		return itemCounts;
 	}
 
