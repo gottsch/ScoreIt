@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Protect It.  If not, see <http://www.gnu.org/licenses/lgpl>.
  */
-package com.someguyssoftware.scoreit.leaderboard;
+package com.someguyssoftware.scoreit.scoreboard;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -160,5 +160,11 @@ public class PlayerScore {
 
 	public void addPoints(int points) {
 		this.points += points;		
+	}
+
+	@Override
+	public String toString() {
+		return "PlayerScore [uuid=" + uuid + ", name=" + name + ", points=" + points + ", itemCounts=" + itemCounts
+				+ "]";
 	}
 }

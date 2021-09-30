@@ -17,13 +17,21 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Protect It.  If not, see <http://www.gnu.org/licenses/lgpl>.
  */
-package com.someguyssoftware.scoreit.leaderboard;
+package com.someguyssoftware.scoreit.scoreboard;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.someguyssoftware.scoreit.ScoreIt;
+
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 
@@ -33,12 +41,18 @@ import net.minecraft.nbt.ListNBT;
  * @author Mark Gottschling on Sep 20, 2021
  *
  */
-public class Leaderboard {
+public class Scoreboard {
+	public static Logger LOGGER = LogManager.getLogger(ScoreIt.NAME);
+	
 	private static final String REGISTRY_KEY = "registry";
+	private static final String STATE_KEY = "state";
 	
-	private static final Map<String, PlayerScore> REGISTRY = new HashMap<>();
-	
-	// TODO is any state required? 
+	public enum GameState {
+		NONE,
+		STARTED,
+		STOPPED,
+		ENDED;
+	}
 	
 	/*
 	 * A comparator that sorts on a Player's points in descending order.
@@ -50,10 +64,64 @@ public class Leaderboard {
 		}
 	};
 	
+	private static final Map<String, PlayerScore> REGISTRY = new HashMap<>();
+	private static GameState gameState = GameState.NONE;
+	public static Comparator<PlayerScore> sortByPoints = new SortByPoints();
+	
 	/**
 	 * 
 	 */
-	private Leaderboard() { }
+	private Scoreboard() { }
+	
+	public static boolean start() {
+		if (gameState == GameState.NONE || gameState == GameState.STOPPED) {
+			gameState = GameState.STARTED;
+			return true;
+		}
+		return false;
+	}
+	
+	public static boolean stop() {
+		if (gameState == GameState.STARTED) {
+			gameState = GameState.STOPPED;
+			return true;
+		}
+		return false;
+	}
+	
+	public static boolean end() {
+		if (gameState == GameState.STARTED || gameState == GameState.STOPPED) {
+			gameState = GameState.ENDED;
+			// TODO should dump the scores to a text file or something
+			return true;
+		}
+		return false;
+	}
+	
+	public static void reset() {
+		gameState = GameState.NONE;
+		REGISTRY.clear();
+	}
+	
+	public static boolean isRunning() {
+		return gameState == GameState.STARTED;
+	}
+	
+	public static boolean isPaused() {
+		return gameState == GameState.STOPPED;
+	}
+	
+	public static boolean isComplete() {
+		return gameState == GameState.ENDED;
+	}
+	
+	public static GameState getGameState() {
+		return gameState;
+	}
+	
+	public static List<PlayerScore> getScores() {
+		return REGISTRY.values().stream().collect(Collectors.toList());
+	}
 	
 	public static void addPlayer(String uuid, String name) {
 		// creates new PlayerDetails and adds to the registry
@@ -112,10 +180,37 @@ public class Leaderboard {
 	
 	/**
 	 * 
+	 * @param stringUUID
+	 * @param pointsValue
+	 * @param stack
+	 * @return
+	 */
+	public static Optional<Integer> addPoints(String uuid, int points, ItemStack stack) {
+		Optional<PlayerScore> details = getPlayer(uuid);
+		if (details.isPresent()) {
+			details.get().addPoints(points);
+			if (details.get().getItemCounts().containsKey(stack.getItem().getRegistryName())) {
+				details.get().getItemCounts().get(stack.getItem().getRegistryName()).grow(stack.getCount());
+			}
+			else {
+				details.get().getItemCounts().put(stack.getItem().getRegistryName(), stack);
+			}
+			return Optional.of(details.get().getPoints());
+		}
+		return Optional.empty();
+	}
+	
+	/**
+	 * 
 	 * @param nbt
 	 */
-	 public static void load(CompoundNBT leaderboard) {
-		 ListNBT scoreList = leaderboard.getList(REGISTRY_KEY, 10);
+	 public static void load(CompoundNBT scoreboard) {
+		 if (scoreboard.contains(STATE_KEY)) {
+			 LOGGER.info("loading state -> {}", GameState.valueOf(scoreboard.getString(STATE_KEY)));
+			 gameState = GameState.valueOf(scoreboard.getString(STATE_KEY));
+		 }
+		 
+		 ListNBT scoreList = scoreboard.getList(REGISTRY_KEY, 10);
 		 scoreList.forEach(entry -> {
 			 CompoundNBT scoreNbt = (CompoundNBT)entry;
 			 // load a player score
@@ -130,21 +225,23 @@ public class Leaderboard {
 	 
 	 /**
 	  * 
-	  * @param leaderboard
+	  * @param scoreboard
 	  * @return
 	  */
-	 public static CompoundNBT save(CompoundNBT leaderboard) {
+	 public static CompoundNBT save(CompoundNBT scoreboard) {
 		 ListNBT scoreList = new ListNBT();
 		 REGISTRY.entrySet().forEach(entry -> {
+			 LOGGER.info("saving for player -> {}", entry.getValue().getName());
 			 // create a compound for player score
 			 CompoundNBT scoreNbt = entry.getValue().save(new CompoundNBT());
 			 // add to list
 			 scoreList.add(scoreNbt);
 		 });
-		 // TODO any other properties		 
-		 
-		 // add list to leaderboard
-		 leaderboard.put(REGISTRY_KEY, scoreList);		 
-		 return leaderboard;
+		 // TODO any other properties		
+		 scoreboard.putString(STATE_KEY, gameState.toString());
+		 LOGGER.info("saving state -> {}", gameState.toString());
+		 // add list to scoreboard
+		 scoreboard.put(REGISTRY_KEY, scoreList);		 
+		 return scoreboard;
 	 }
 }

@@ -19,8 +19,11 @@
  */
 package com.someguyssoftware.scoreit.persistence;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.someguyssoftware.scoreit.ScoreIt;
-import com.someguyssoftware.scoreit.leaderboard.Leaderboard;
+import com.someguyssoftware.scoreit.scoreboard.Scoreboard;
 
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.world.IWorld;
@@ -34,10 +37,11 @@ import net.minecraft.world.storage.WorldSavedData;
  *
  */
 public class ScoreItSavedData extends WorldSavedData {
-
+	public static Logger LOGGER = LogManager.getLogger(ScoreIt.NAME);
+	
 	public static final String GEN_DATA_KEY = ScoreIt.MODID + ":generationData";
 	private static final String SCORE_IT = ScoreIt.MODID;
-	private static final String LEADERBOARD = "leaderboard";
+	private static final String SCOREBOARD = "scoreboard";
 	
 	public ScoreItSavedData() {
 		super(GEN_DATA_KEY);
@@ -49,18 +53,21 @@ public class ScoreItSavedData extends WorldSavedData {
 
 	@Override
 	public void load(CompoundNBT nbt) {
+		LOGGER.info("loading ScoreIt data ...");
 		CompoundNBT scoreIt = nbt.getCompound(SCORE_IT);
-		if (scoreIt.contains(LEADERBOARD)) {
-			Leaderboard.load(scoreIt.getCompound(LEADERBOARD));
+		if (scoreIt.contains(SCOREBOARD)) {
+			LOGGER.info("has scoreboard, loading...");
+			Scoreboard.load(scoreIt.getCompound(SCOREBOARD));
 		}
 	}
 
 	@Override
 	public CompoundNBT save(CompoundNBT nbt) {
+		LOGGER.info("saving ScoreIt data...");
 		// create a treasure compound			
 		CompoundNBT scoreIt = new CompoundNBT();
 		nbt.put(SCORE_IT, scoreIt);
-		scoreIt.put(LEADERBOARD, Leaderboard.save(new CompoundNBT()));
+		scoreIt.put(SCOREBOARD, Scoreboard.save(new CompoundNBT()));
 		return nbt;
 	}
 	

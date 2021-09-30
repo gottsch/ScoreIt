@@ -1,0 +1,6 @@
+{
+  "deposit_item": {
+    "subtitle": "sound.scoreit.subtitle.deposit_item",
+    "sounds": [ "scoreit:deposit_item" ]
+  }
+}

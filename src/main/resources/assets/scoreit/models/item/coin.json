@@ -1,6 +1,6 @@
 {
     "parent": "item/generated",
     "textures": {
-        "layer0": "scoreit:items/coin"
+        "layer0": "scoreit:item/coin"
     }
 }

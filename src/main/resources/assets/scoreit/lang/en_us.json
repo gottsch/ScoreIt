@@ -1,4 +1,18 @@
 {
 	"item.scoreit.coin":"Coin",
-	"block.scoreit.dropbox":"Dropbox"
+	"block.scoreit.dropbox":"Dropbox",
+	
+	"command.scoreit.start.success": "Score It has been started.",
+	"command.scoreit.start.failure": "Unable to start Score It. Current state -> %s",
+	"command.scoreit.stop.success": "Score It has been stopped.",
+	"command.scoreit.stop.failure": "Unable to stop Score It. Current state -> %s",
+	"command.scoreit.end.success": "Score It has been ended.",
+	"command.scoreit.end.failure": "Unable to end Score It. Current state -> %s",
+	"command.scoreit.reset": "Score It has been reset.",
+	"command.scoreit.score": "%s) %s has %s points.",
+	
+	"message.scoreit.game_not_started": "Score It is not started. Current state -> %s",
+	"message.scoreit.game_paused": "Score It is currently paused.",
+	
+	"sound.scoreit.subtitle.deposit_item":"Depositing Item - Clink"
 }

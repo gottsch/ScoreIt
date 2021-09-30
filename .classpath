@@ -37,7 +37,7 @@
 			<attribute name="gradle_used_by_scope" value="test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8/"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="C:/Users/Mark/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.16.5-36.2.0_mapped_official_1.16.5/forge-1.16.5-36.2.0_mapped_official_1.16.5-recomp.jar" sourcepath="C:/Users/Mark/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.16.5-36.2.0_mapped_official_1.16.5/forge-1.16.5-36.2.0_mapped_official_1.16.5-sources.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
@@ -418,7 +418,7 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" kind="src" path="/forge-1.16.5-36.2.0"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/gottsch-minecraft-GottschCore"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GottschCore"/>
+	<classpathentry kind="lib" path="libs/GottschCore-mc1.16.5-f36.1.0-v1.4.0.jar"/>
 	<classpathentry kind="output" path="bin/default"/>
 </classpath>
