@@ -44,6 +44,9 @@ import net.minecraft.nbt.ListNBT;
 public class Scoreboard {
 	public static Logger LOGGER = LogManager.getLogger(ScoreIt.NAME);
 	
+	public static final int TOP_RANKINGS = 5;
+	
+	private static final Map<String, PlayerScore> REGISTRY = new HashMap<>();
 	private static final String REGISTRY_KEY = "registry";
 	private static final String STATE_KEY = "state";
 	
@@ -64,7 +67,6 @@ public class Scoreboard {
 		}
 	};
 	
-	private static final Map<String, PlayerScore> REGISTRY = new HashMap<>();
 	private static GameState gameState = GameState.NONE;
 	public static Comparator<PlayerScore> sortByPoints = new SortByPoints();
 	

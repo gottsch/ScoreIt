@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -46,7 +47,10 @@ import com.someguyssoftware.treasure2.world.gen.structure.TemplateHolder;
 
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Tuple;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.TranslationTextComponent;
@@ -136,6 +140,15 @@ public class ScoreItCommand {
 		if (Scoreboard.end()) {
 			source.sendSuccess(new TranslationTextComponent("command.scoreit.end.success"), true);
 			saveData(source);
+			// TODO message all with final scores
+			
+			// dump the score to a file
+			try {
+				dump(getRankedTopScores(Optional.empty(), Optional.ofNullable(source.getPlayerOrException())));
+			}
+			catch(Exception e) {
+				LOGGER.error("Unable to dump() scores -> ", e);
+			}
 		} else {
 			source.sendSuccess(new TranslationTextComponent("command.scoreit.end.failure", Scoreboard.getGameState().toString()), true);
 		}
@@ -150,12 +163,16 @@ public class ScoreItCommand {
 	}
 
 	/**
-	 * 
+	 * TODO update to take the number of top rankings as a command param
 	 * @param source
 	 * @return
 	 */
 	private static int scores(CommandSource source) {
 		try {
+			List<Tuple<Integer, PlayerScore>> tuple = getRankedTopScores(Optional.of(Scoreboard.TOP_RANKINGS), Optional.ofNullable(source.getPlayerOrException()));
+			List<ITextComponent> scoreMessages = formatScores(tuple, Optional.ofNullable(source.getPlayerOrException()));
+			sendScores(scoreMessages, Optional.ofNullable(source.getPlayerOrException()));
+			
 			List<PlayerScore> scores = Scoreboard.getScores();
 			if (!scores.isEmpty()) {
 				Collections.sort(scores, Scoreboard.sortByPoints);
@@ -198,6 +215,53 @@ public class ScoreItCommand {
 		return 1;
 	}
 
+	private static void sendScores(List<ITextComponent> scoreMessages, Optional<ServerPlayerEntity> ofNullable) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private static List<ITextComponent> formatScores(List<Tuple<Integer, PlayerScore>> tuple,
+			Optional<ServerPlayerEntity> ofNullable) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/**
+	 * 
+	 * @param numRankings
+	 * @param player
+	 * @return
+	 */
+	private static List<Tuple<Integer, PlayerScore>> getRankedTopScores(final Optional<Integer> numRankings,
+			final Optional<ServerPlayerEntity> player) {
+		
+		List<Tuple<Integer, PlayerScore>> rankedScores = new ArrayList<>();
+
+		// TODO if topRankings is not present then get all rankings
+		
+		List<PlayerScore> scores = Scoreboard.getScores();
+		
+		if (!scores.isEmpty()) {
+			Collections.sort(scores, Scoreboard.sortByPoints);
+			int maxRanks = numRankings.isPresent() ? numRankings.get() : scores.size(); 
+			int currentRank = 1;
+			boolean playerIsTopRanked = false;
+			for (PlayerScore score : scores) {
+				LOGGER.info("player score -> {}", score);
+				if (currentRank <= maxRanks) {
+					// add the rank and score to the tuple
+					
+					if (player.isPresent() && score.getUuid().equals(player.get().getStringUUID())) {
+						playerIsTopRanked = true;
+					}
+					source.sendSuccess(text, true);
+				}
+			}
+		}
+		
+		return rankedScores;
+	}
+
 	/**
 	 * 
 	 * @param source
@@ -215,7 +279,7 @@ public class ScoreItCommand {
 	/**
 	 * 
 	 */
-	private void dump() {
+	private static void dump(List<Tuple<Integer, PlayerScore>> scores) {
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyymmdd");
 
 		String filename = String.format("scoreit-scores-%s.txt", formatter.format(new Date()));
@@ -235,38 +299,15 @@ public class ScoreItCommand {
 		String format = "**    %1$-33s: %2$-30s  **\n";
 		String format2 = "**    %1$-15s: %2$-15s: %3$-33s  **\n";
 		String heading = "**  %1$-67s  **\n";
+		String format3 = "**  %1$-2s) %2$-25s - %3$-35s Points  **\n";
 		
 		StringBuilder sb = new StringBuilder();
-		sb.append(div).append(String.format("**  %-67s  **\n", "SCORES")).append(div)
-				.append(String.format(heading, "[Template By Type Map]"));
-		for (Map.Entry<String, Template> entry : getTemplates().entrySet()) {
-			sb.append(String.format(format, entry.getKey(), entry.getValue().getAuthor()));
-		}
-		sb.append(div);
-		sb.append(String.format(heading, "[Template by Archetype:Type | Biome]"));
-		Map<String, Map<ResourceLocation, List<TemplateHolder>>> map = getTemplatesByArchetypeTypeBiomeTable().rowMap();
-		if (map == null || map.isEmpty()) { ScoreIt.LOGGER.debug("template biome map is null/empty");}
-		ScoreIt.LOGGER.debug("biome map.size -> {}", map.size());
+		sb.append(div).append(String.format(heading, "SCORES")).append(div);
 		
-		for (String row : map.keySet()) {
-			ScoreIt.LOGGER.debug("template biome row key -> {}", row);
-			Map<ResourceLocation, List<TemplateHolder>> tmp = map.get(row);
-			for (Entry<ResourceLocation, List<TemplateHolder>> entry : tmp.entrySet()) {
-				String templateNames = entry.getValue().stream().map(a -> a.getLocation().toString()).collect(Collectors.joining(", "));
-//				Biome biome = Biome.getBiome(entry.getKey());
-				Biome biome = ForgeRegistries.BIOMES.getValue(entry.getKey());
-				String biomeName = "";
-				if (biome != null) {
-//					biomeName = WorldInfo.isClientDistribution() ? biome.getDisplayName().getString() : biome.getRegistryName().toString() ;
-					biomeName = biome.getRegistryName().toString();
-				}
-				else {
-					biomeName = String.format("No biome for {}", entry.getKey());
-				}
-				sb.append(String.format(format2, row, biomeName, templateNames));
-			}
-		}
-		
+		scores.forEach(tuple -> {
+			sb.append(String.format(format3,"TODO"));
+		});
+
 		try {
 			Files.write(Paths.get(path.toString(), filename), sb.toString().getBytes());
 		} catch (IOException e) {

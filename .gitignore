@@ -3,6 +3,7 @@ bin
 *.launch
 .metadata
 .project
+.classpath
 
 # idea
 out
