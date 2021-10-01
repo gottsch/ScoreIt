@@ -29,10 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,22 +39,17 @@ import com.someguyssoftware.scoreit.ScoreIt;
 import com.someguyssoftware.scoreit.persistence.ScoreItSavedData;
 import com.someguyssoftware.scoreit.scoreboard.PlayerScore;
 import com.someguyssoftware.scoreit.scoreboard.Scoreboard;
-import com.someguyssoftware.treasure2.ScoreIt;
-import com.someguyssoftware.treasure2.world.gen.structure.TemplateHolder;
 
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Tuple;
+import net.minecraft.util.Util;
+import net.minecraft.util.text.ChatType;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.gen.feature.template.Template;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * 
@@ -138,16 +130,26 @@ public class ScoreItCommand {
 
 	private static int end(CommandSource source) {
 		if (Scoreboard.end()) {
-			source.sendSuccess(new TranslationTextComponent("command.scoreit.end.success"), true);
-			saveData(source);
-			// TODO message all with final scores
-			
+			try {
+				List<Tuple<Integer, PlayerScore>> scores = getRankedTopScores(Optional.of(Scoreboard.TOP_RANKINGS), Optional.empty());
+				List<ITextComponent> scoreMessages = formatScores(scores, Optional.empty());
+				broadcastScores(source, scoreMessages, Optional.empty());
+				source.sendSuccess(new TranslationTextComponent("command.scoreit.end.success"), true);
+			}
+			catch(Exception e) {
+				LOGGER.error("Unable to rank and broadcast scores -> ", e);
+			}
+
 			// dump the score to a file
 			try {
-				dump(getRankedTopScores(Optional.empty(), Optional.ofNullable(source.getPlayerOrException())));
+				dump(getRankedTopScores(Optional.empty(), Optional.empty()));
 			}
 			catch(Exception e) {
 				LOGGER.error("Unable to dump() scores -> ", e);
+			}
+			finally {
+				Scoreboard.reset();
+				saveData(source);
 			}
 		} else {
 			source.sendSuccess(new TranslationTextComponent("command.scoreit.end.failure", Scoreboard.getGameState().toString()), true);
@@ -171,59 +173,12 @@ public class ScoreItCommand {
 		try {
 			List<Tuple<Integer, PlayerScore>> tuple = getRankedTopScores(Optional.of(Scoreboard.TOP_RANKINGS), Optional.ofNullable(source.getPlayerOrException()));
 			List<ITextComponent> scoreMessages = formatScores(tuple, Optional.ofNullable(source.getPlayerOrException()));
-			sendScores(scoreMessages, Optional.ofNullable(source.getPlayerOrException()));
-			
-			List<PlayerScore> scores = Scoreboard.getScores();
-			if (!scores.isEmpty()) {
-				Collections.sort(scores, Scoreboard.sortByPoints);
-				int rank = 1;
-				boolean playerIsTopRanked = false;
-				for (PlayerScore score : scores) {
-					LOGGER.info("player score -> {}", score);
-					if (rank <= 5) {
-						TranslationTextComponent text = new TranslationTextComponent("command.scoreit.score", rank++, score.getName(), String.valueOf(score.getPoints()));
-						if (score.getUuid().equals(source.getPlayerOrException().getStringUUID())) {
-							text.withStyle(TextFormatting.BOLD, TextFormatting.GOLD);
-							playerIsTopRanked = true;
-						}
-						source.sendSuccess(text, true);
-					}
-					else {
-						if (!playerIsTopRanked) {
-							if (score.getUuid().equals(source.getPlayerOrException().getStringUUID())) {
-								source.sendSuccess(new TranslationTextComponent("command.scoreit.score", rank, score.getName(), String.valueOf(score.getPoints())), true);
-								break;
-							}
-							rank++;
-						}
-						else {
-							break;
-						}
-					}
-				}
-			}
-			else {
-				/*
-				 *  this condition shouldn't happen unless the Scoring is reset while players are on the server
-				 */
-				source.sendSuccess(new TranslationTextComponent("command.scoreit.score", "0", source.getTextName(), "0"), true);				
-			}
+			broadcastScores(source, scoreMessages, Optional.ofNullable(source.getPlayerOrException()));
 		}
 		catch(Exception e) {
 			LOGGER.error("Unable to complete scores command -> ", e);
 		}
 		return 1;
-	}
-
-	private static void sendScores(List<ITextComponent> scoreMessages, Optional<ServerPlayerEntity> ofNullable) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	private static List<ITextComponent> formatScores(List<Tuple<Integer, PlayerScore>> tuple,
-			Optional<ServerPlayerEntity> ofNullable) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	/**
@@ -234,32 +189,92 @@ public class ScoreItCommand {
 	 */
 	private static List<Tuple<Integer, PlayerScore>> getRankedTopScores(final Optional<Integer> numRankings,
 			final Optional<ServerPlayerEntity> player) {
-		
+
 		List<Tuple<Integer, PlayerScore>> rankedScores = new ArrayList<>();
 
-		// TODO if topRankings is not present then get all rankings
-		
-		List<PlayerScore> scores = Scoreboard.getScores();
-		
+		List<PlayerScore> scores = Scoreboard.getScores();		
 		if (!scores.isEmpty()) {
 			Collections.sort(scores, Scoreboard.sortByPoints);
-			int maxRanks = numRankings.isPresent() ? numRankings.get() : scores.size(); 
-			int currentRank = 1;
+			int maxRanks = numRankings.isPresent() ? Math.min(numRankings.get(), scores.size()) : scores.size(); 
 			boolean playerIsTopRanked = false;
-			for (PlayerScore score : scores) {
-				LOGGER.info("player score -> {}", score);
-				if (currentRank <= maxRanks) {
-					// add the rank and score to the tuple
-					
-					if (player.isPresent() && score.getUuid().equals(player.get().getStringUUID())) {
-						playerIsTopRanked = true;
+
+			if (player.isPresent()) {
+				int currentRank = 1;
+				// process all scores until player is found and number of top scores are met
+				for (PlayerScore score : scores) {
+					LOGGER.info("player score -> {}", score);
+					if (currentRank <= maxRanks) {
+						LOGGER.info("current rank -> {}", currentRank);
+						// add the rank and score to the tuple
+						rankedScores.add(new Tuple<Integer, PlayerScore>(Integer.valueOf(currentRank++), score));
+						// set a flag to indicate the player is part of the top ranked scores
+						if (!playerIsTopRanked && player.isPresent() && score.getUuid().equals(player.get().getStringUUID())) {
+							playerIsTopRanked = true;
+						}
 					}
-					source.sendSuccess(text, true);
+					else if (!playerIsTopRanked) {
+						if (score.getUuid().equals(player.get().getStringUUID())) {
+							rankedScores.add(new Tuple<Integer, PlayerScore>(Integer.valueOf(currentRank), score));
+							break;
+						}
+					}
+					else {
+						break;
+					}
+				}
+			}
+			else {
+				for (int rank = 0; rank < maxRanks; rank++) {
+					rankedScores.add(new Tuple<Integer, PlayerScore>(Integer.valueOf(rank + 1), scores.get(rank)));
 				}
 			}
 		}
-		
 		return rankedScores;
+	}
+
+	/**
+	 * 
+	 * @param scores
+	 * @param player
+	 * @return
+	 */
+	private static List<ITextComponent> formatScores(List<Tuple<Integer, PlayerScore>> scores, Optional<ServerPlayerEntity> player) {
+
+		List<ITextComponent> formattedScores = new ArrayList<>();
+		scores.forEach(score -> {
+			TranslationTextComponent text = new TranslationTextComponent("command.scoreit.score", score.getA(), score.getB().getName(), String.valueOf(score.getB().getPoints()));
+			if (player.isPresent() && score.getB().getUuid().equals(player.get().getStringUUID())) {
+				text.withStyle(TextFormatting.BOLD, TextFormatting.GOLD);
+			}
+			formattedScores.add(text);
+		});
+		return formattedScores;
+	}
+
+	/**
+	 * 
+	 * @param source
+	 * @param messages
+	 * @param player
+	 */
+	private static void broadcastScores(CommandSource source, List<ITextComponent> messages, Optional<ServerPlayerEntity> player) {
+		/*
+		 *  this condition shouldn't happen unless the Scoring is reset while players are on the server
+		 *  or the Scoring was ended before anyone scored.
+		 *  also note, do not want to broadcast to all players if empty
+		 */
+		if (messages.isEmpty() && player.isPresent()) {
+			source.sendSuccess(new TranslationTextComponent("command.scoreit.score", "0", source.getTextName(), "0"), true);
+		}
+
+		messages.forEach(message -> {
+			if (player.isPresent()) {
+				source.sendSuccess(message, true);
+			}
+			else {
+				source.getServer().getPlayerList().broadcastMessage(message, ChatType.SYSTEM, Util.NIL_UUID);
+			}
+		});
 	}
 
 	/**
@@ -275,7 +290,7 @@ public class ScoreItCommand {
 			savedData.setDirty();
 		}
 	}
-	
+
 	/**
 	 * 
 	 */
@@ -284,6 +299,7 @@ public class ScoreItCommand {
 
 		String filename = String.format("scoreit-scores-%s.txt", formatter.format(new Date()));
 
+		// TODO this should be in the world save folder
 		Path path = Paths.get("config", ScoreIt.MODID, "dumps").toAbsolutePath();
 		try {
 			Files.createDirectories(path);
@@ -296,16 +312,14 @@ public class ScoreItCommand {
 		char[] chars = new char[75];
 		Arrays.fill(chars, '*');
 		String div = new String(chars) + "\n";
-		String format = "**    %1$-33s: %2$-30s  **\n";
-		String format2 = "**    %1$-15s: %2$-15s: %3$-33s  **\n";
 		String heading = "**  %1$-67s  **\n";
-		String format3 = "**  %1$-2s) %2$-25s - %3$-35s Points  **\n";
-		
+		String format3 = "**  %1$-2s) %2$-25s - %3$-30s Points  **\n";
+
 		StringBuilder sb = new StringBuilder();
 		sb.append(div).append(String.format(heading, "SCORES")).append(div);
-		
+
 		scores.forEach(tuple -> {
-			sb.append(String.format(format3,"TODO"));
+			sb.append(String.format(format3, tuple.getA(), tuple.getB().getName(), tuple.getB().getPoints()));
 		});
 
 		try {

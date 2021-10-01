@@ -192,10 +192,11 @@ public class Scoreboard {
 		if (details.isPresent()) {
 			details.get().addPoints(points);
 			if (details.get().getItemCounts().containsKey(stack.getItem().getRegistryName())) {
-				details.get().getItemCounts().get(stack.getItem().getRegistryName()).grow(stack.getCount());
+				Integer i = details.get().getItemCounts().get(stack.getItem().getRegistryName());
+				details.get().getItemCounts().put(stack.getItem().getRegistryName(), i + stack.getCount());
 			}
 			else {
-				details.get().getItemCounts().put(stack.getItem().getRegistryName(), stack);
+				details.get().getItemCounts().put(stack.getItem().getRegistryName(), stack.getCount());
 			}
 			return Optional.of(details.get().getPoints());
 		}

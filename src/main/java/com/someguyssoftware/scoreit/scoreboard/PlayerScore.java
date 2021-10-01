@@ -40,13 +40,13 @@ public class PlayerScore {
 	private static final String UUID_KEY = "uuid";
 	private static final String NAME_KEY = "name";
 	private static final String POINTS_KEY = "points";
-	private static final String STACK_KEY = "stack";
+	private static final String COUNT_KEY = "count";
 	private static final String COUNTS_KEY = "counts";
 	
 	private String uuid;
 	private String name;
 	private int points;
-	private Map<ResourceLocation, ItemStack> itemCounts;
+	private Map<ResourceLocation, Integer> itemCounts;
 
 	/**
 	 * 
@@ -91,7 +91,10 @@ public class PlayerScore {
 			if (nbt.contains(COUNTS_KEY)) {
 				ListNBT list = nbt.getList(COUNTS_KEY, 10);
 				list.forEach(element -> {
-					score.getItemCounts().put(new ResourceLocation(nbt.getString(NAME_KEY)), ItemStack.of((CompoundNBT) nbt.get(STACK_KEY)));
+					ResourceLocation r = new ResourceLocation(((CompoundNBT)element).getString(NAME_KEY));
+					ScoreIt.LOGGER.info("loading resource -> {}", r.toString());
+					Integer count = ((CompoundNBT)element).getInt(COUNT_KEY);
+					score.getItemCounts().put(r, count);
 				});
 			}			
 			optionalScore = Optional.of(score);
@@ -112,12 +115,13 @@ public class PlayerScore {
 		nbt.putString(NAME_KEY, getName());
 		nbt.putInt(POINTS_KEY, getPoints());
 		ListNBT countList = new ListNBT();
-		getItemCounts().forEach((resource, stack) -> {
-			CompoundNBT count = new CompoundNBT();
-			count.putString(NAME_KEY, resource.toString());
-			CompoundNBT stackNbt = stack.save(new CompoundNBT());
-			count.put(STACK_KEY, stackNbt);
-			countList.add(count);
+		getItemCounts().forEach((resource, count) -> {
+			CompoundNBT countNBT = new CompoundNBT();
+			countNBT.putString(NAME_KEY, resource.toString());
+			ScoreIt.LOGGER.info("saving resource -> {}", resource.toString());
+			ScoreIt.LOGGER.info("saving count -> {}", count);
+			countNBT.putInt(COUNT_KEY, count);
+			countList.add(countNBT);
 		});
 		nbt.put(COUNTS_KEY, countList);
 		return nbt;
@@ -147,14 +151,14 @@ public class PlayerScore {
 		this.points = points;
 	}
 
-	public Map<ResourceLocation, ItemStack> getItemCounts() {
+	public Map<ResourceLocation, Integer> getItemCounts() {
 		if (itemCounts == null) {
 			itemCounts = new HashMap<>();
 		}
 		return itemCounts;
 	}
 
-	public void setItemCounts(Map<ResourceLocation, ItemStack> itemCounts) {
+	public void setItemCounts(Map<ResourceLocation, Integer> itemCounts) {
 		this.itemCounts = itemCounts;
 	}
 

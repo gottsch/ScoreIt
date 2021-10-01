@@ -58,7 +58,7 @@ description="A simple 'leaderboard' mod that allows you to turn-in items for poi
     versionRange="[1.16.5]"
     ordering="NONE"
     side="BOTH"
- [[dependencies.scoreit]] #optional
+ [[dependencies.scoreit]]
     # the modid of the dependency
     modId="gottschcore" #mandatory
     # Does this dependency have to exist - if not, ordering below must be specified

@@ -20,6 +20,8 @@ import com.someguyssoftware.scoreit.sound.ScoreItSounds;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.Hand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.text.TextFormatting;
@@ -54,9 +56,15 @@ public class PlayerEventHandler {
 	
 	@SubscribeEvent
 	public static void onRightClickItemEvent(PlayerInteractEvent.RightClickBlock event) {
-		LOGGER.info("in item use -> {}", event.getItemStack().getDisplayName().getString());
-		
-		if (WorldInfo.isClientSide(event.getPlayer().level)) {
+		if (event.getPlayer().level.isClientSide()) {
+			return;
+		}
+
+		/*
+		 * why is this event being called for both hands, when only one is interacting?
+		 */
+		ScoreIt.LOGGER.debug("using hand -> {}", event.getHand());
+		if (event.getItemStack() == ItemStack.EMPTY || event.getItemStack().getItem() == Items.AIR || event.getHand() != Hand.MAIN_HAND) {
 			return;
 		}
 		
@@ -72,12 +80,10 @@ public class PlayerEventHandler {
 		
 		// get the block
 		Block block = event.getWorld().getBlockState(event.getPos()).getBlock();
-		LOGGER.info("block -> {}", block.getName().getString());
 		ItemStack stack = event.getItemStack();
-		LOGGER.info("stack -> {}", stack.getDisplayName().getString());
 		// test against the dropbox
 		if (ScoreItBlocks.DROPBOX == block) {
-			LOGGER.info("using on a dropbox");
+			LOGGER.debug("using {} on a dropbox", stack.getDisplayName().getString());
 			// get all the tags for the itemstack that have the ScoreIt namespace
 			Set<String> tags = stack.getItem()
 					.getTags().stream()
@@ -85,21 +91,21 @@ public class PlayerEventHandler {
 					.map(ResourceLocation::getPath)
 					.collect(Collectors.toSet());
 
-			LOGGER.info("belongs to # of tags -> {}", tags.size());
+			LOGGER.debug("belongs to # of tags -> {}", tags.size());
 			// TODO future check for registered tags
 
 			// default get "*_point" tags (should only belong to one ex. 1_point)
 			List<String> pointTags = tags.stream()
 					.filter(tag -> tag.endsWith("_point"))
 					.collect(Collectors.toList());
-			LOGGER.info("belongs to # of point tags -> {}", pointTags.size());
+			LOGGER.debug("belongs to # of point tags -> {}", pointTags.size());
 			
 			// get the first item
 			if (pointTags.size() > 0) {
 				String tag = pointTags.get(0);
 				// extract the prefix ie before "_"
 				String pointPrefix = tag.replaceAll("_point", "").trim();
-				LOGGER.info("point prefix -> {}", pointPrefix);
+				LOGGER.debug("point prefix -> {}", pointPrefix);
 				try {
 					// convert prefix into Integer
 					int pointsValue = Integer.valueOf(pointPrefix) * stack.getCount();
@@ -114,7 +120,7 @@ public class PlayerEventHandler {
 						// play sound
 						Random random = new Random();
 						event.getWorld().playSound(null, event.getPos(), ScoreItSounds.DEPOSIT_ITEM, SoundCategory.BLOCKS, 1F, random.nextFloat() * 0.1F + 0.9F);
-						LOGGER.info("player now has points -> {}", playerPoints.get());
+						LOGGER.debug("player now has points -> {}", playerPoints.get());
 						// remove stack from hand
 						stack.shrink(stack.getCount());
 					}
