@@ -418,7 +418,6 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" kind="src" path="/GottschCore"/>
 	<classpathentry kind="lib" path="libs/GottschCore-mc1.16.5-f36.1.0-v1.4.0.jar"/>
 	<classpathentry kind="output" path="bin/default"/>
 </classpath>

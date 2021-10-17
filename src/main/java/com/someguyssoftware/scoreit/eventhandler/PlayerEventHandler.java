@@ -68,21 +68,21 @@ public class PlayerEventHandler {
 			return;
 		}
 		
-		// perform checks on the scoreboard game state
-		if (Scoreboard.getGameState() == GameState.STOPPED) {
-            event.getPlayer().sendMessage((new TranslationTextComponent("message.scoreit.game_paused", Scoreboard.getGameState().toString())).withStyle(new TextFormatting[]{TextFormatting.GRAY, TextFormatting.ITALIC}),event.getPlayer().getUUID());
-            return;
-		}
-		else if (Scoreboard.getGameState() != GameState.STARTED) {
-            event.getPlayer().sendMessage((new TranslationTextComponent("message.scoreit.game_not_started", Scoreboard.getGameState().toString())).withStyle(new TextFormatting[]{TextFormatting.GRAY, TextFormatting.ITALIC}),event.getPlayer().getUUID());
-            return;
-		}
-		
 		// get the block
 		Block block = event.getWorld().getBlockState(event.getPos()).getBlock();
 		ItemStack stack = event.getItemStack();
 		// test against the dropbox
 		if (ScoreItBlocks.DROPBOX == block) {
+			// perform checks on the scoreboard game state
+			if (Scoreboard.getGameState() == GameState.STOPPED) {
+            			event.getPlayer().sendMessage((new TranslationTextComponent("message.scoreit.game_paused", Scoreboard.getGameState().toString())).withStyle(new TextFormatting[]{TextFormatting.GRAY, TextFormatting.ITALIC}),event.getPlayer().getUUID());
+            			return;
+			}
+			else if (Scoreboard.getGameState() != GameState.STARTED) {
+            			event.getPlayer().sendMessage((new TranslationTextComponent("message.scoreit.game_not_started", Scoreboard.getGameState().toString())).withStyle(new TextFormatting[]{TextFormatting.GRAY, TextFormatting.ITALIC}),event.getPlayer().getUUID());
+            			return;
+			}
+			
 			LOGGER.debug("using {} on a dropbox", stack.getDisplayName().getString());
 			// get all the tags for the itemstack that have the ScoreIt namespace
 			Set<String> tags = stack.getItem()
